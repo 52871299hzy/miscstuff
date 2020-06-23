@@ -9,6 +9,7 @@ vector<unsigned int> MtxSecOffsets;
 vector<vector<unsigned int>> MtxStrOffsets;
 unsigned int CharMap[1024];
 bool hasunrec=0;
+bool doDecodeControl=1;
 void readfile(FILE *pFile,unsigned char *dest)
 {
 	long lSize;
@@ -108,11 +109,14 @@ void ProcessMtx()
 	}
 	MtxStrOffsets.push_back(vector<unsigned int>());
 	MtxStrOffsets[MtxSecOffsets.size()-1].push_back(mtxsize+4);
+	outputstr("[\n");
 	for(int i=0;i<MtxSecOffsets.size()-1;i++)
 	{
+		outputstr("\t[\n");
 		MtxStrOffsets[i].push_back(MtxStrOffsets[i+1][0]);
 		for(unsigned int j=0;j<MtxStrOffsets[i].size()-1;j++)
 		{
+			outputstr("\t\t\"");
 			posmtx=MtxStrOffsets[i][j];
 		//	cerr<<j<<' '<<posmtx<<' '<<MtxStrOffsets[i][j+1]<<endl;
 			char temp[20];
@@ -128,9 +132,10 @@ void ProcessMtx()
 						outputint16(0x0045);
 						break;
 					case 0xfffd://'D [CR] [LF]'
-						outputint16(0x0044);
-						outputint16(0x000d);
-						outputint16(0x000a);
+//						outputint16(0x0044);
+//						outputint16(0x000d);
+//						outputint16(0x000a);
+						outputstr("\\n");
 						break;
 					case 0xf813://'{arrow}'
 						//outputint16(0x2193);
@@ -173,20 +178,13 @@ void ProcessMtx()
 						}
 				}
 			}
-			outputint16(0x000d);
-			outputint16(0x000a);
-			outputint16(0x000d);
-			outputint16(0x000a);
+			if(j==MtxStrOffsets[i].size()-2)outputstr("\"\n");
+			else outputstr("\",\n");
 		}
-		outputint16(0x000d);
-		outputint16(0x000a);
-		outputint16(0x0025);
-		outputint16(0x0025);
-		outputint16(0x0025);
-		outputint16(0x000d);
-		outputint16(0x000a);
+		if(i==MtxSecOffsets.size()-2)outputstr("\t]\n");
+		else outputstr("\t],\n");
 	}
-	
+	outputstr("]\n");
 }
 int main(int argc,char *argv[])
 {
