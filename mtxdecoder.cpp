@@ -125,7 +125,7 @@ void ProcessMtx()
 			while(posmtx<mtxsize&&posmtx<MtxStrOffsets[i][j+1])
 			{
 				unsigned int ch=mrdint16();
-				switch(ch)
+				if(doDecodeControl)switch(ch)
 				{
 					case 0xffff:break;
 					case 0xfffe://'E'
@@ -177,6 +177,33 @@ void ProcessMtx()
 							//outputstr(string(temp));
 						}
 				}
+				else switch(ch)
+				{
+					case 0xffff:break;
+					case 0xfffe://'E'
+						outputint16(0x0045);
+						break;
+					case 0xfffd://'D [CR] [LF]'
+//						outputint16(0x0044);
+//						outputint16(0x000d);
+//						outputint16(0x000a);
+						outputstr("\\n");
+						break;
+					case 0xf800://'{color:x}'
+						mrdint16();
+						break;
+					case 0xf880://'{speed:x}'
+						mrdint16();
+						break;
+					case 0xf881://'{wait:x}'
+						mrdint16();
+						break;
+					default:
+						if(ch<fntsize)
+						{
+							outputint16(CharMap[ch]);
+						}
+				}
 			}
 			if(j==MtxStrOffsets[i].size()-2)outputstr("\"\n");
 			else outputstr("\",\n");
@@ -188,9 +215,9 @@ void ProcessMtx()
 }
 int main(int argc,char *argv[])
 {
-	if(argc!=4)
+	if(argc<4)
 	{
-		printf("Usage: mtxdecoder <mtx> <fnt> <output>");
+		printf("Usage: mtxdecoder <mtx> <fnt> <output> [--noctrlchr]");
 		return 0;
 	}
 	if((mtx=fopen(argv[1],"rb"))==NULL)
@@ -208,6 +235,7 @@ int main(int argc,char *argv[])
 		printf("open output file error.");
 		return 1;
 	}
+	if(argc>=5&&string(argv[4])=="--noctrlchr")doDecodeControl=0;
 	memset(strmtx,0,sizeof(strmtx));
 	memset(strfnt,0,sizeof(strmtx));
 	
