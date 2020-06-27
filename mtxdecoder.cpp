@@ -5,12 +5,13 @@ FILE *mtx,*fnt,*outp;
 unsigned char strmtx[10*1024*1024],strfnt[10*1024*1024];
 unsigned int posmtx,posfnt;
 unsigned int fntsize,mtxsize;
+long fntfilesize;
 vector<unsigned int> MtxSecOffsets;
 vector<vector<unsigned int>> MtxStrOffsets;
 unsigned int CharMap[1024];
 bool hasunrec=0;
 bool doDecodeControl=1;
-void readfile(FILE *pFile,unsigned char *dest)
+long readfile(FILE *pFile,unsigned char *dest)
 {
 	long lSize;
 	fseek(pFile,0,SEEK_END);
@@ -22,7 +23,7 @@ void readfile(FILE *pFile,unsigned char *dest)
 		fputs("Reading error",stderr);
 		assert(0);
 	}
-	//cerr<<lSize<<"!"<<endl;
+	return lSize;
 }
 unsigned int frdint16()
 {
@@ -71,7 +72,7 @@ void outputstr(string str)
 		outputint16(0x0u+c);
 	}
 }
-void CreateCharMap()	//deals with fnt file
+void CreateCharMap()	//deals with fnt file (Wii style)
 {
 	posfnt=0xc;
 	fntsize=frdint32();
@@ -91,6 +92,32 @@ void CreateCharMap()	//deals with fnt file
 //	{
 //		printf("%x ",CharMap[i]);
 //	}
+}
+void CreateCharMapDS()	//deals with fnt file (NDS style)
+{
+	posfnt=0x4;
+	unsigned int Height=frdint32();
+	unsigned int Width=frdint32();
+	fntsize=frdint32();
+	posfnt=48;
+	for(unsigned int i=0;i<fntsize;i++)
+	{
+		CharMap[i]=frdint16();
+		frdint16();
+		posfnt+=Width*Height/2;
+	}
+}
+void ProcessFnt()
+{
+	posfnt=0x4;
+	unsigned int Height=frdint32();
+	unsigned int Width=frdint32();
+	fntsize=frdint32();
+	if(48+(fntsize*(4+Width*Height/2))==fntfilesize)
+	{
+		CreateCharMapDS();
+	}
+	else CreateCharMap();
 }
 void ProcessMtx()
 {
@@ -240,13 +267,13 @@ int main(int argc,char *argv[])
 	memset(strfnt,0,sizeof(strmtx));
 	
 	readfile(mtx,strmtx);
-	readfile(fnt,strfnt);
+	fntfilesize=readfile(fnt,strfnt);
 	if(strfnt[0]!='F'||strfnt[1]!='N'||strfnt[2]!='T'||strfnt[3]!=0)
 	{
 		printf("Invalid fnt file.");
 		return 1;
 	}
-	CreateCharMap();
+	ProcessFnt();
 	ProcessMtx();
 	fclose(mtx);
 	fclose(fnt);
