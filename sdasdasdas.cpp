@@ -16,7 +16,8 @@ std::vector<std::string> get_all_files(std::string path, std::string suffix)
     }
     while((dirp = readdir(dp)) != NULL)
     {
-        if(strstr(dirp->d_name,suffix.c_str())!=NULL)
+    	string s=dirp->d_name;
+        if(s!="."&&s!=".."&&strstr(dirp->d_name,suffix.c_str())!=NULL)
         {
         	files.push_back(string(dirp->d_name));
 		}
@@ -24,16 +25,16 @@ std::vector<std::string> get_all_files(std::string path, std::string suffix)
     closedir(dp);
     return files;
 }
+string sn;
 int main()
 {
-	auto ss=get_all_files(".\\dat\\",".fnt");
+	auto ss=get_all_files("..\\ndstextdump\\",".fnt");
 	for(auto s:ss)
 	{
-		
-		int num;
-		sscanf(s.c_str(),"%d",&num);
-		char cmd[100];
-		sprintf(cmd,"mtxdecoder dat\\%04d dat\\%04d.fnt %04d.txt",num+1,num,num+1);
+		sn=s;
+		sn.resize(s.length()-4);
+		char cmd[1000];
+		sprintf(cmd,"mtxdecoder ..\\ndstextdump\\%s.mtx ..\\ndstextdump\\%s.fnt ..\\ndstextdump\\%s.mtx.txt --noctrlchr",sn.c_str(),sn.c_str(),sn.c_str());
 		int el=system(cmd);
 		cout<<s<<' '<<el<<endl;
 	}

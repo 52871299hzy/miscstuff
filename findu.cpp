@@ -16,7 +16,7 @@ std::vector<std::string> get_all_files(std::string path, std::string suffix)
     }
     while((dirp = readdir(dp)) != NULL)
     {
-        if(string(dirp->d_name)!=".."&&string(dirp->d_name)!="."&&strstr(dirp->d_name,suffix.c_str())==NULL)
+        if(s!="."&&s!=".."&&strstr(dirp->d_name,suffix.c_str())!=NULL)
         {
         	files.push_back(string(dirp->d_name));
 		}
@@ -26,8 +26,8 @@ std::vector<std::string> get_all_files(std::string path, std::string suffix)
 }
 int main()
 {
-	auto ss=get_all_files(".\\noex\\",".");
-	auto sss=get_all_files(".\\ndstext\\extractall\\","asfdasd");
+	auto ss=get_all_files("..\\noex\\",".");
+	auto sss=get_all_files("..\\ndstext\\extractall\\","asfdasd");
 	for(auto s:ss)
 	{
 		string ans="nomatch";
