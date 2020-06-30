@@ -25,23 +25,17 @@ std::vector<std::string> get_all_files(std::string path, std::string suffix)
     closedir(dp);
     return files;
 }
+string sn;
 int main()
 {
-	auto ss=get_all_files("..\\wiitxt\\",".txt");
-	auto sss=get_all_files("..\\ndstextdump\\",".txt");
+	auto ss=get_all_files("..\\ndstextdump\\",".fnt");
 	for(auto s:ss)
 	{
-		string ans="nomatch";
-		for(auto t:sss)
-		{
-			char cmd[100];
-			sprintf(cmd,"fc /b ..\\wiitxtn\\%s ..\\ndstextdump\\%s >nul",s.c_str(),t.c_str());
-			if(!system(cmd))
-			{
-				ans=t;
-				break;
-			}
-		}
-		cout<<s<<"->"<<ans<<endl;
+		sn=s;
+		sn.resize(s.length()-4);
+		char cmd[1000];
+		sprintf(cmd,"mtxdecoder ..\\ndstextdump\\%s.mtx ..\\ndstextdump\\%s.fnt ..\\ndstextdump\\%s.mtx.txt --noctrlchr",sn.c_str(),sn.c_str(),sn.c_str());
+		int el=system(cmd);
+		cout<<s<<' '<<el<<endl;
 	}
 }
