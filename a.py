@@ -36,3 +36,4 @@ for i in range (Line):
     draw_table.text (xy=(0, pix * i - 7), text=Data[i], fill='#FFFFFF', font=ImageFont.truetype ('./NotoSansCJK-Medium.ttc', pix),
                          spacing=0, align="left")
 image.save (f_out, 'PNG')
+exit(Length);
