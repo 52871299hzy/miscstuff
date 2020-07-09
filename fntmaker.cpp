@@ -4,6 +4,7 @@ FILE *txt,*outp,*tmpout,*mtx;
 int txtsize;
 unsigned char stxt[1000000];
 string vu8txt;
+string fntname;
 set<string> setu8chr;
 map<unsigned int,unsigned int> Charmap;
 set<unsigned char> ignorechar={'\"','\n','[',']','\t','\r',','};
@@ -134,6 +135,16 @@ void initmap()
 		i++;
 		outputint16(0x15);
 	}
+	fflush(outp);
+	fclose(outp);
+	#ifndef WIN32
+	system("mono VrConvert.exe -e tmp.png gvr rgb5a3 rgb5a3 -gcix");
+	char cmd[1000]="";
+	sprintf(cmd,"cat %s tmp.gvr > tmp.fnt",fntname.c_str());
+	system(cmd);
+	sprintf(cmd,"mv tmp.fnt %s",fntname.c_str());
+	system(cmd);
+	#endif
 }
 void makemtx()
 {
