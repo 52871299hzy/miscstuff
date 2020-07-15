@@ -1,5 +1,7 @@
 #include <bits/stdc++.h>
+#include <string>
 using namespace std;
+typedef unsigned int ui;
 FILE *txt,*outp,*tmpout,*mtx;
 int txtsize;
 unsigned char stxt[1000000];
@@ -8,39 +10,86 @@ string fntname;
 set<string> setu8chr;
 map<unsigned int,unsigned int> Charmap;
 set<unsigned char> ignorechar={'\"','\n','[',']','\t','\r',','};
-unsigned int utf8_to_utf16le(const string& u8str)
+vector<unsigned int> MtxSecOffsets;
+vector<vector<unsigned int>> MtxStrOffsets;
+vector<unsigned int> MtxSecSizes;
+vector<vector<unsigned int>> MtxStrSizes;
+vector<unsigned short> Data;
+ui GetNxtU8toU16(int &pos)
 {
 	unsigned int ans=0;
-	int i=0;
 	bool is_ok = true;
-	// 开始转换
-	uint32_t ch = u8str[i];	// 取出UTF8序列首字节
+	uint32_t ch = stxt[pos];	
 	if ((ch & 0x80) == 0) {
-		// 最高位为0，只有1字节表示UNICODE代码点
 		ans=ch;
 		return ans;
 	}
 	switch (ch & 0xF0)
 	{
-		case 0xE0: // 3 字节字符, 0x800 到 0xFFFF
+		case 0xE0:
 		{
-			uint32_t c2 = u8str[++i];
-			uint32_t c3 = u8str[++i];
-			// 计算UNICODE代码点值(第一个字节取低4bit，其余取6bit)
+			uint32_t c2 = stxt[++pos];
+			uint32_t c3 = stxt[++pos];
 			uint32_t codePoint = ((ch & 0x0FU) << 12) | ((c2 & 0x3FU) << 6) | (c3 & 0x3FU);
 			ans=((char16_t)codePoint);
 		}
 		break;
-		case 0xD0: // 2 字节字符, 0x80 到 0x7FF
+		case 0xD0:
 		case 0xC0:
 		{
-			uint32_t c2 = u8str[++i];
-			// 计算UNICODE代码点值(第一个字节取低5bit，其余取6bit)
+			uint32_t c2 = stxt[++pos];
 			uint32_t codePoint = ((ch & 0x1FU) << 12) | ((c2 & 0x3FU) << 6);
 			ans=((char16_t)codePoint);
 		}
 		break;
-		default:	// 单字节部分(前面已经处理，所以不应该进来)
+		default:
+			is_ok = false;
+			break;
+	}
+	return ans;
+}
+ui getNum(int &pos)
+{
+	ui ans=0;
+	for(int i=0;i<4;i++)
+	{
+		if(isdigit(stxt[pos]))ans+=stxt[pos]-'0';
+		else ans+=stxt[pos]-'a'+10;
+		ans=(ans<<4);
+		pos++;
+	}
+	pos--;
+	return ans;
+}
+ui utf8_to_utf16le(string& str)
+{
+	unsigned int ans=0;
+	bool is_ok = true;
+	int pos=0;
+	uint32_t ch = str[pos];	
+	if ((ch & 0x80) == 0) {
+		ans=ch;
+		return ans;
+	}
+	switch (ch & 0xF0)
+	{
+		case 0xE0:
+		{
+			uint32_t c2 = str[++pos];
+			uint32_t c3 = str[++pos];
+			uint32_t codePoint = ((ch & 0x0FU) << 12) | ((c2 & 0x3FU) << 6) | (c3 & 0x3FU);
+			ans=((char16_t)codePoint);
+		}
+		break;
+		case 0xD0:
+		case 0xC0:
+		{
+			uint32_t c2 = str[++pos];
+			uint32_t codePoint = ((ch & 0x1FU) << 12) | ((c2 & 0x3FU) << 6);
+			ans=((char16_t)codePoint);
+		}
+		break;
+		default:
 			is_ok = false;
 			break;
 	}
@@ -144,23 +193,83 @@ void initmap()
 	system(cmd);
 	sprintf(cmd,"mv tmp.fnt %s",fntname.c_str());
 	system(cmd);
+	#else
+	system("VrConvert.exe -e tmp.png gvr rgb5a3 rgb5a3 -gcix");
+	char cmd[1000]="";
+	sprintf(cmd,"copy %s /b + tmp.gvr /b tmp.fnt /b",fntname.c_str());
+	system(cmd);
+	sprintf(cmd,"rename tmp.fnt %s",fntname.c_str());
+	system(cmd);
 	#endif
 }
 void makemtx()
 {
 	int pos=0;
+	bool fileend=0;
 	if(stxt[0]==0xef&&stxt[1]==0xbb&&stxt[2]==0xbf)pos=3;
 	unsigned char ch=stxt[pos];
-	while(ch!='[')
+	while(ch!='[')ch=stxt[++pos];
+	pos++;
+	while(!fileend)
 	{
-		ch=stxt[++pos];
+		while(ch!='[')ch=stxt[++pos];
+		bool sectionend=0;
+		while(!sectionend)
+		{
+			while(ch!='\"')ch=stxt[++pos];
+			pos++;
+			int lenstr=0;
+			while(ch!='\"')
+			{
+				switch(ch)
+				{
+					case '\\':Data.push_back(0xFFFDu);pos++;lenstr++;
+						break;
+					case '<':
+						switch(stxt[pos+1])
+						{
+							case 'a'://<arrow>
+								pos+=6;
+								Data.push_back(0xf813u);
+								lenstr++;
+								break;
+							case 'c':
+								if(stxt[pos+2]=='l')//<clear>
+								{
+									pos+=6;
+									Data.push_back(0xf812u);
+									lenstr++;
+								}
+								else //<color:0000>
+								{
+									
+								}
+								break;
+							case '/'://</color>
+								pos+=7;
+								Data.push_back(0xf801u);
+								lenstr++;
+								break;
+							case 's'://<speed:0000>
+								break;
+							case 'w'://<wait:0000>
+								break;
+						}
+						break;
+					default:
+						break;
+				}
+				ch=stxt[++pos];
+			}
+		}
 	}
+	
 }
 int main(int argc,char *argv[])
 {
-	if(argc<3)
+	if(argc<4)
 	{
-		cout<<"Usage: fntmaker <txt> <outputfnt>"<<endl;
+		cout<<"Usage: fntmaker <txt> <outputfnt> <outputmtx>"<<endl;
 		return 0;
 	}
 	if((txt=fopen(argv[1],"rb"))==NULL)
@@ -170,8 +279,13 @@ int main(int argc,char *argv[])
 	}
 	if((outp=fopen(argv[2],"wb"))==NULL)
 	{
-		cout<<"Open output error."<<endl;
+		cout<<"Open outputfnt error."<<endl;
 		return 2;
+	}
+	if((mtx=fopen(argv[3],"wb"))!=NULL)
+	{
+		cout<<"Open outputmtx error."<<endl;
+		return 3;
 	}
 	initmap();
 	makemtx();
