@@ -53,9 +53,9 @@ ui getNum(int &pos)
 	ui ans=0;
 	for(int i=0;i<4;i++)
 	{
+		ans=(ans<<4);
 		if(isdigit(stxt[pos]))ans+=stxt[pos]-'0';
 		else ans+=stxt[pos]-'a'+10;
-		ans=(ans<<4);
 		pos++;
 	}
 	pos--;
