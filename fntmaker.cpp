@@ -242,7 +242,10 @@ void makemtx()
 								}
 								else //<color:0000>
 								{
-									
+									pos+=7;
+									Data.push_back(0xf800u);
+									Data.push_back(getNum(pos));
+									pos--;
 								}
 								break;
 							case '/'://</color>
@@ -251,12 +254,22 @@ void makemtx()
 								lenstr++;
 								break;
 							case 's'://<speed:0000>
+								pos+=7;
+								Data.push_back(0xf880u);
+								Data.push_back(getNum(pos));
+								pos--;
 								break;
 							case 'w'://<wait:0000>
+								pos+=6;
+								Data.push_back(0xf881u);
+								Data.push_back(getNum(pos));
+								pos--;
 								break;
 						}
 						break;
 					default:
+						ui c=GetNxtU8toU16(pos);
+						Data.push_back(c);
 						break;
 				}
 				ch=stxt[++pos];
