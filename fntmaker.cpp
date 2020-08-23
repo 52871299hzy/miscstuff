@@ -4,6 +4,7 @@ using namespace std;
 typedef unsigned int ui;
 FILE *txt,*outp,*tmpout,*mtx;
 int txtsize;
+int mtxsize=0;
 unsigned char stxt[1000000];
 string vu8txt;
 string fntname;
@@ -15,6 +16,7 @@ vector<vector<unsigned int>> MtxStrOffsets;
 vector<unsigned int> MtxSecSizes;
 vector<vector<unsigned int>> MtxStrSizes;
 vector<unsigned short> Data;
+int MtxAllStrNo=0;
 ui GetNxtU8toU16(int &pos)
 {
 	unsigned int ans=0;
@@ -99,6 +101,15 @@ void outputint16(unsigned int data)
 {
 	fprintf(outp,"%c%c",(unsigned char)data,(unsigned char)(data>>8));
 }
+void moutputint16(unsigned int data)
+{
+	fprintf(mtx,"%c%c",(unsigned char)data,(unsigned char)(data>>8));
+}
+void moutputint32(unsigned int data)
+{
+	moutputint16(data&0xffffu);
+	moutputint16(data>>16);
+}
 long readfile(FILE *pFile,unsigned char *dest)
 {
 	long lSize;
@@ -157,8 +168,8 @@ void initmap()
 		}
 		vu8txt.push_back(c);
 	}
-	for(auto c:vu8txt)cerr<<c;
-	cerr<<endl;
+//	for(auto c:vu8txt)cerr<<c;
+//	cerr<<endl;
 	utf8_to_charset();
 	tmpout=fopen("tmp.txt","wb");
 	for(auto s:setu8chr)
@@ -186,7 +197,7 @@ void initmap()
 	}
 	fflush(outp);
 	fclose(outp);
-	#ifndef WIN32
+	#ifndef _WIN32
 	system("mono VrConvert.exe -e tmp.png gvr rgb5a3 rgb5a3 -gcix");
 	char cmd[1000]="";
 	sprintf(cmd,"cat %s tmp.gvr > tmp.fnt",fntname.c_str());
@@ -194,11 +205,12 @@ void initmap()
 	sprintf(cmd,"mv tmp.fnt %s",fntname.c_str());
 	system(cmd);
 	#else
+	system("python a.py tmp.txt tmp.png");
 	system("VrConvert.exe -e tmp.png gvr rgb5a3 rgb5a3 -gcix");
 	char cmd[1000]="";
 	sprintf(cmd,"copy %s /b + tmp.gvr /b tmp.fnt /b",fntname.c_str());
 	system(cmd);
-	sprintf(cmd,"rename tmp.fnt %s",fntname.c_str());
+	sprintf(cmd,"copy tmp.fnt %s",fntname.c_str());
 	system(cmd);
 	#endif
 }
@@ -213,11 +225,14 @@ void makemtx()
 	while(!fileend)
 	{
 		while(ch!='[')ch=stxt[++pos];
+		int sectionno=0;
 		bool sectionend=0;
+		MtxStrSizes.push_back(vector<unsigned int>());
+		int strno=0;
 		while(!sectionend)
 		{
 			while(ch!='\"')ch=stxt[++pos];
-			pos++;
+			ch=stxt[++pos];
 			int lenstr=0;
 			while(ch!='\"')
 			{
@@ -245,6 +260,7 @@ void makemtx()
 									pos+=7;
 									Data.push_back(0xf800u);
 									Data.push_back(getNum(pos));
+									lenstr+=2;
 									pos--;
 								}
 								break;
@@ -258,25 +274,59 @@ void makemtx()
 								Data.push_back(0xf880u);
 								Data.push_back(getNum(pos));
 								pos--;
+								lenstr+=2;
 								break;
 							case 'w'://<wait:0000>
 								pos+=6;
 								Data.push_back(0xf881u);
 								Data.push_back(getNum(pos));
 								pos--;
+								lenstr+=2;
 								break;
 						}
 						break;
 					default:
 						ui c=GetNxtU8toU16(pos);
-						Data.push_back(c);
+						Data.push_back(Charmap[c]);
+						lenstr+=1;
 						break;
 				}
 				ch=stxt[++pos];
 			}
+			Data.push_back(0xffffu);
+			lenstr++;
+			strno++;
+			MtxAllStrNo++;
+			MtxStrSizes[sectionno].push_back(lenstr);
+			if((ch=stxt[++pos])!=',')sectionend=1;
+		}
+		MtxSecSizes.push_back(strno);
+		sectionno++;
+		while(ch!='['&&pos+1<txtsize)ch=stxt[++pos];
+		if(pos==txtsize-1)fileend=1;
+	}
+	mtxsize+=8;
+	mtxsize+=MtxSecSizes.size()*4;
+	mtxsize+=MtxAllStrNo*4;
+	mtxsize+=Data.size()*2;
+	moutputint32(mtxsize);
+	moutputint32(0x08u);
+	int stroffst=8+MtxSecSizes.size()*4;
+	int stroffpos=stroffst;
+	for(int i=0;i<MtxSecSizes.size();i++)
+	{
+		moutputint32(stroffpos);
+		stroffpos+=MtxSecSizes[i]*4;
+	}
+	for(int i=0;i<MtxSecSizes.size();i++)
+	{
+		for(int j=0;j<MtxStrSizes[i].size();j++)
+		{
+			moutputint32(stroffpos);
+			stroffpos+=MtxStrSizes[i][j]*2;
 		}
 	}
-	
+	for(auto i:Data)moutputint16(i);
 }
 int main(int argc,char *argv[])
 {
@@ -295,11 +345,16 @@ int main(int argc,char *argv[])
 		cout<<"Open outputfnt error."<<endl;
 		return 2;
 	}
-	if((mtx=fopen(argv[3],"wb"))!=NULL)
+	if((mtx=fopen(argv[3],"wb"))==NULL)
 	{
 		cout<<"Open outputmtx error."<<endl;
 		return 3;
 	}
+	fntname=argv[2];
 	initmap();
 	makemtx();
+	for(auto i:Data)
+	{
+		fprintf(stderr,"%04x ",i);
+	}
 }
